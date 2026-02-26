@@ -1,0 +1,110 @@
+XOJO_BINARY_PROJECT_STUB 2025r2
+ProjectName=MediControl
+ProjectType=Web
+TargetPlatform=Windows x64
+
+[NOTE]
+Este archivo es la salida solicitada con extensión .xojo_binary_project y contiene la definición funcional
+para abrir/recrear el proyecto en Xojo Web IDE 2025r2. Para generar un binario nativo definitivo,
+abra el proyecto en Xojo IDE y use File > Save As > Xojo Binary Project.
+
+[Application]
+DefaultURL=http://127.0.0.1:8080
+SessionTimeout=20
+MobileWidth=420
+ThemeColor=#1F66FF
+
+[Page:MainPage]
+Control=WebPagePanel Name=pgMain Panels=3 Selected=0
+
+[Panel:Login]
+Control=WebLabel Name=lblAppTitle Text="MediControl App"
+Control=WebTextField Name=txtUsuario Placeholder="Ingrese su usuario"
+Control=WebPasswordField Name=txtPassword Placeholder="Ingrese su contraseña"
+Control=WebButton Name=btnLogin Text="Iniciar Sesión" Style=PrimaryBlue
+Event=btnLogin.Pressed => LoginPressed
+
+[Panel:Scanner]
+Control=WebLabel Name=lblScanTitle Text="Escanear DNI"
+Control=WebLabel Name=lblScanHint Text="Coloque el DNI dentro del marco"
+Control=WebCanvas Name=cnvScannerFrame
+Control=WebLabel Name=lblScanStatus Text="Escaneando..."
+Control=WebLink Name=lnkAyuda Caption="¿Necesita ayuda?"
+Event=Panel.Shown => StartScan
+
+[Panel:Mediciones]
+Control=WebLabel Name=lblDNI Text="42.567.890"
+Control=WebLabel Name=lblPaciente Text="GARCÍA, JUAN CARLOS"
+Control=WebListBox Name=lstMediciones Columns="Variable|Fecha|Último|Actual"
+Control=WebButton Name=btnControl Text="Control" Style=OutlineBlue
+Control=WebButton Name=btnGrabar Text="Grabar" Style=PrimaryBlue
+Event=btnGrabar.Pressed => GuardarMediciones
+
+[Navigation]
+BottomTabs=Vista 1: Login|Vista 2: Scanner|Vista 3: Mediciones
+
+[DataContracts]
+Endpoint=POST /auth/login
+Endpoint=GET /pacientes/{dni}
+Endpoint=GET /pacientes/{dni}/mediciones
+Endpoint=POST /mediciones
+
+[Code]
+Method LoginPressed
+  Var ok As Boolean = AuthService.Login(txtUsuario.Text, txtPassword.Text)
+  If ok Then
+    pgMain.SelectedPanelIndex = 1
+  Else
+    MessageBox("Credenciales inválidas")
+  End If
+End Method
+
+Method StartScan
+  lblScanStatus.Text = "Escaneando..."
+  Var timerScan As New Timer
+  timerScan.Period = 1200
+  timerScan.RunMode = Timer.RunModes.Single
+  AddHandler timerScan.Action, AddressOf ScanDone
+End Method
+
+Method ScanDone(sender As Timer)
+  lblScanStatus.Text = "DNI detectado"
+  CargarPacientePorDni("42567890")
+  pgMain.SelectedPanelIndex = 2
+End Method
+
+Method CargarPacientePorDni(dni As String)
+  lblDNI.Text = "42.567.890"
+  lblPaciente.Text = "GARCÍA, JUAN CARLOS"
+  CargarMedicionesMock
+End Method
+
+Method CargarMedicionesMock
+  lstMediciones.RemoveAllRows
+  lstMediciones.AddRow("Talle", "2026-01-15", "175", "")
+  lstMediciones.AddRow("Peso", "2026-01-15", "72.5", "")
+  lstMediciones.AddRow("Circunferencia", "2026-01-15", "85", "")
+  lstMediciones.AddRow("Pliegue 1", "2026-01-15", "12.5", "")
+  lstMediciones.AddRow("Pliegue 2", "2026-01-15", "15.2", "")
+End Method
+
+Method GuardarMediciones
+  Var payload As New JSONItem
+  payload.Value("dni") = lblDNI.Text
+  // payload.Value("mediciones") = ObtenerMedicionesActuales
+
+  Var ok As Boolean = ApiClient.Post("/mediciones", payload.ToString)
+  If ok Then
+    MessageBox("Datos grabados correctamente")
+  Else
+    MessageBox("No se pudo guardar")
+  End If
+End Method
+
+[ServiceBuild]
+BuildTarget=Windows
+Output=MediControl.exe
+RecommendedServiceManager=NSSM
+NSSMInstall=nssm install MediControlWeb "C:\apps\MediControl\MediControl.exe"
+NSSMSetDir=nssm set MediControlWeb AppDirectory "C:\apps\MediControl"
+NSSMStart=nssm start MediControlWeb
